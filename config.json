@@ -1,0 +1,24 @@
+{
+	"botConfig":{
+		"key":"7c5c47f6602442c2b57ca78aff8a5003",
+		"secret":"75c56896f3d64fd7887ebcea95276b2a",
+		"refreshRate":10
+	},
+	"pairConfigs":[
+		{
+			"pair":"BTC-LTC",
+			"maxDataPoints":300,
+			"maxTradingValue":0.1
+		},
+		{
+			"pair":"BTC-ETC",
+			"maxDataPoints":300,
+			"maxTradingValue":0.1
+		},
+		{
+			"pair":"BTC-ETH",
+			"maxDataPoints":300,
+			"maxTradingValue":0.1
+		}
+	]
+}
