@@ -47,30 +47,8 @@ public class TradedCoin {
 		this.coinName = coinName;
 	}
 
-	public List<Candle> getCandles1h() {
-		return candles1h;
+	public boolean equalsCoin(TradedCoin compareTo) {
+		return this.coinName.equals(compareTo.getCoinName());
 	}
-
-	public void setCandles1h(List<Candle> candles1h) {
-		this.candles1h = candles1h;
-	}
-
-	public List<Candle> getCandles30m() {
-		return candles30m;
-	}
-
-	public void setCandles30m(List<Candle> candles30m) {
-		this.candles30m = candles30m;
-	}
-
-	public List<Candle> getCandles5m() {
-		return candles5m;
-	}
-
-	public void setCandles5m(List<Candle> candles5m) {
-		this.candles5m = candles5m;
-	}
-	
-	
 	
 }

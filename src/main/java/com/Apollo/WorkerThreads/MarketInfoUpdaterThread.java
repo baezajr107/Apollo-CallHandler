@@ -6,25 +6,35 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import com.Apollo.Services.ExchangeService;
 import com.github.ccob.bittrex4j.BittrexExchange;
 import com.github.ccob.bittrex4j.dao.Fill;
 import com.Apollo.Data.TradedCoin;
-import com.Apollo.Data.Candle;
+import com.Apollo.Repositories.TradedCoinsRepository;
+import com.Apollo.Data.MarketInfoTick;
 
 /*
  * This class handles all logic and control for a given trading pair
  * 
  */
 
-public class TickUpdaterThread implements Runnable{
+@Service
+public class MarketInfoUpdaterThread implements Runnable{
 	private Thread t;
 	private boolean stopped = false;
-	private List<TradedCoin> tradedCoins = new ArrayList<TradedCoin>();
+	public List<TradedCoin> tradedCoins = new ArrayList<TradedCoin>();
+	
+	@Autowired
+	private TradedCoinsRepository tradedCoinsRepo;
 	   
-	public TickUpdaterThread(List<TradedCoin> tradedCoins) {
+	public MarketInfoUpdaterThread(List<TradedCoin> tradedCoins) {
 		this.tradedCoins = tradedCoins;
+		checkCoinStatus();
 	}
 	   
 	public void run() {
@@ -79,7 +89,22 @@ public class TickUpdaterThread implements Runnable{
 		stopped = true;
 	}
 	
+	private void checkCoinStatus() {
+		List<TradedCoin> tradedCoinsFromRepo = tradedCoinsRepo.findAll();
 
+		List<TradedCoin> sharedLocalCoins = tradedCoins.stream()
+				.flatMap(local -> tradedCoinsFromRepo.stream()
+						.filter(remote -> local.equalsCoin(remote)))
+				.collect(Collectors.toList());
+		tradedCoins.retainAll(sharedLocalCoins);
+		
+		List<TradedCoin> sharedRemoteCoins = tradedCoinsFromRepo.stream()
+				.flatMap(remote -> tradedCoins.stream()
+						.filter(local -> remote.equalsCoin(local)))
+				.collect(Collectors.toList());
+		tradedCoinsFromRepo.removeAll(sharedRemoteCoins);
+		
+	}
 	
 	
 }

@@ -22,7 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 
-import com.Apollo.Data.Candle;
+import com.Apollo.Data.MarketInfoTick;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,16 +32,16 @@ import com.fasterxml.jackson.databind.ObjectReader;
 public class ExchangeService {
 	final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
-	public static List<Candle> getTickers(String name, String interval) {
+	public static List<MarketInfoTick> getTickers(String name, String interval) {
 		RestTemplate restTemplate = new RestTemplate();
 		String resourceUrl = "https://bittrex.com/Api/v2.0/pub/market/GetTicks?marketName="+ name +"&tickInterval="+interval;
 		ResponseEntity<JsonNode> response = restTemplate.getForEntity(resourceUrl, JsonNode.class);
 		ObjectMapper mapper = new ObjectMapper();
-		ObjectReader reader = mapper.readerFor(new TypeReference<List<Candle>>() {
+		ObjectReader reader = mapper.readerFor(new TypeReference<List<MarketInfoTick>>() {
 		});
 
 		try {
-			List<Candle> tickerList = reader.readValue(response.getBody().path("result"));
+			List<MarketInfoTick> tickerList = reader.readValue(response.getBody().path("result"));
 			return tickerList;
 		} catch (IOException e) {
 
