@@ -1,81 +1,56 @@
 package com.Apollo.WorkerThreads;
 
 import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import com.Apollo.Services.ExchangeService;
 import com.github.ccob.bittrex4j.BittrexExchange;
+import com.github.ccob.bittrex4j.BittrexExchange.Interval;
 import com.github.ccob.bittrex4j.dao.Fill;
+import com.github.ccob.bittrex4j.dao.Response;
+import com.github.ccob.bittrex4j.dao.Tick;
+import com.Apollo.MainThread;
+import com.Apollo.Data.Candle;
 import com.Apollo.Data.TradedCoin;
-import com.Apollo.Repositories.TradedCoinsRepository;
-import com.Apollo.Data.MarketInfoTick;
 
-/*
- * This class handles all logic and control for a given trading pair
- * 
- */
 
-@Service
 public class MarketInfoUpdaterThread implements Runnable{
 	private Thread t;
-	private boolean stopped = false;
-	public List<TradedCoin> tradedCoins = new ArrayList<TradedCoin>();
+	static BittrexExchange bittrexExchange;
 	
-	@Autowired
-	private TradedCoinsRepository tradedCoinsRepo;
 	   
-	public MarketInfoUpdaterThread(List<TradedCoin> tradedCoins) {
-		this.tradedCoins = tradedCoins;
-		checkCoinStatus();
+	public MarketInfoUpdaterThread() {
+		
 	}
 	   
 	public void run() {
 
-		try(BittrexExchange bittrexExchange = new BittrexExchange()) {
-
+		try {
+			bittrexExchange = new BittrexExchange();
 
             bittrexExchange.onUpdateExchangeState(updateExchangeState -> {
-//                double volume = Arrays.stream(updateExchangeState.getFills())
-//                        .mapToDouble(Fill::getQuantity)
-//                        .sum();
-//
-//                System.out.println(String.format("N: %d, %02f volume across %d fill(s) for %s", updateExchangeState.getNounce(),
-//                        volume, updateExchangeState.getFills().length, updateExchangeState.getMarketName()));
+            	TradedCoin coin = MainThread.tradedCoins.get(updateExchangeState.getMarketName());
+            	coin.addFills(Arrays.asList(updateExchangeState.getFills()));
         		System.out.println(updateExchangeState.getFills().length+" fills for coin: " + updateExchangeState.getMarketName());
             });
+            
+    		while(true) {
+    			Thread.sleep(60000);
+    			checkCoinStatus();
+    			// sleep for the set amount of time before cycling again
 
-            bittrexExchange.connectToWebSocket(() -> {
-            	for(TradedCoin coin: tradedCoins) {
-            		bittrexExchange.subscribeToExchangeDeltas(coin.getCoinName(), null);
-            	}
-                bittrexExchange.subscribeToMarketSummaries(null);
-            });
-
-            
-            
-            
-//    		while(stopped==false) {
-//    			
-//    			
-//    			// sleep for the set amount of time before cycling again
-//
-//    		}
+    		}
 
         } catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		
-
-		
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
 	}
 	   
 	public void start () {
@@ -85,26 +60,86 @@ public class MarketInfoUpdaterThread implements Runnable{
 		}
 	}
 	
-	public void stop() {
-		stopped = true;
-	}
-	
 	private void checkCoinStatus() {
-		List<TradedCoin> tradedCoinsFromRepo = tradedCoinsRepo.findAll();
+		System.out.println("checking coin status with coin list size: " + MainThread.tradedCoins.size());
+		if(MainThread.tradedCoins != null) {
+			boolean connectionNeedsUpdate = false;
+			for(TradedCoin coin: MainThread.tradedCoins.values()) {
+				if(coin.getCandles5m() == null) {
+					System.out.println("getting 5m candles for coin: " + coin.getCoinName());
+					Response<Tick[]> bittrexResponse = bittrexExchange.getTicks(coin.getCoinName(), Interval.fiveMin);
+					List<Candle> candles = new ArrayList<Candle>();
+					Tick[] ticks = bittrexResponse.getResult();
+					for(int i=0;i<ticks.length;i++) {
+						candles.add(new Candle(ticks[i]));
+					}
+					coin.setCandles5m(candles);
+					connectionNeedsUpdate = true;
+				}
+				if(coin.getCandles30m() == null) {
+					System.out.println("getting 30m candles for coin: " + coin.getCoinName());
+					Response<Tick[]> bittrexResponse = bittrexExchange.getTicks(coin.getCoinName(), Interval.thirtyMin);
+					List<Candle> candles = new ArrayList<Candle>();
+					Tick[] ticks = bittrexResponse.getResult();
+					for(int i=0;i<ticks.length;i++) {
+						candles.add(new Candle(ticks[i]));
+					}
+					coin.setCandles30m(candles);
+					connectionNeedsUpdate = true;
+				}
+				if(coin.getCandles1h() == null) {
+					System.out.println("getting 1h candles for coin: " + coin.getCoinName());
+					Response<Tick[]> bittrexResponse = bittrexExchange.getTicks(coin.getCoinName(), Interval.hour);
+					List<Candle> candles = new ArrayList<Candle>();
+					Tick[] ticks = bittrexResponse.getResult();
+					for(int i=0;i<ticks.length;i++) {
+						candles.add(new Candle(ticks[i]));
+					}
+					coin.setCandles1h(candles);
+					connectionNeedsUpdate = true;
+				}
+			}
+			if(connectionNeedsUpdate) {
+				updateExchangeConnection();
+			}
+			ZonedDateTime now = ZonedDateTime.now();
+			if(now.getMinute()%5==0) {
+				for(TradedCoin coin:MainThread.tradedCoins.values()) {
+					coin.shift5m();
+				}
+				if(now.getMinute()%30==0) {
+					for(TradedCoin coin:MainThread.tradedCoins.values()) {
+						coin.shift30m();
+					}
+					if(now.getMinute()==0) {
+						for(TradedCoin coin:MainThread.tradedCoins.values()) {
+							coin.shift1h();
+						}
+					}
+				}
+			}
+		}
 
-		List<TradedCoin> sharedLocalCoins = tradedCoins.stream()
-				.flatMap(local -> tradedCoinsFromRepo.stream()
-						.filter(remote -> local.equalsCoin(remote)))
-				.collect(Collectors.toList());
-		tradedCoins.retainAll(sharedLocalCoins);
-		
-		List<TradedCoin> sharedRemoteCoins = tradedCoinsFromRepo.stream()
-				.flatMap(remote -> tradedCoins.stream()
-						.filter(local -> remote.equalsCoin(local)))
-				.collect(Collectors.toList());
-		tradedCoinsFromRepo.removeAll(sharedRemoteCoins);
 		
 	}
 	
+	private void updateExchangeConnection() {
+       
+		try {
+			bittrexExchange.disconnectFromWebSocket();
+		}catch(NullPointerException e) {
+			System.out.println("Not connected to web socket.");
+		}
+		try {
+			bittrexExchange.connectToWebSocket(() -> {
+				for(String coin: MainThread.tradedCoins.keySet()) {
+					bittrexExchange.subscribeToExchangeDeltas(coin, null);
+				}
+			});
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	
 }
