@@ -1,4 +1,4 @@
-package com.Apollo.WorkerThreads;
+package com.Apollo.CallHandler.WorkerThreads;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -8,9 +8,9 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.Apollo.MainThread;
-import com.Apollo.Data.TradedCoin;
-import com.Apollo.Repositories.TradedCoinsRepository;
+import com.Apollo.CallHandler.MainThread;
+import com.Apollo.CallHandler.Data.TradedCoin;
+import com.Apollo.CallHandler.Repositories.TradedCoinsRepository;
 import com.github.ccob.bittrex4j.BittrexExchange;
 
 @Service

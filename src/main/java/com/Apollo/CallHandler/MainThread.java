@@ -1,4 +1,4 @@
-package com.Apollo;
+package com.Apollo.CallHandler;
 
 import java.util.List;
 import java.util.Map;
@@ -13,14 +13,19 @@ import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfigurat
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
-import com.Apollo.Data.TradedCoin;
-import com.Apollo.WorkerThreads.CoinManagerThread;
-import com.Apollo.WorkerThreads.MarketInfoUpdaterThread;
+import com.Apollo.CallHandler.Data.TradedCoin;
+import com.Apollo.CallHandler.WorkerThreads.CoinManagerThread;
+import com.Apollo.CallHandler.WorkerThreads.MarketInfoUpdaterThread;
 
 
 @SpringBootApplication(scanBasePackages="com.Apollo")
 public class MainThread implements CommandLineRunner{
 	
+	/*
+	 * I know this centralized method of handling data can lead to race conditions.
+	 * The timeframes of the market are large and slow enough that minor variances
+	 * in prices is allowable since the effect will be minimal on the overall outcome.
+	 */
 	public static Map<String,TradedCoin> tradedCoins;
 	
 	@Autowired

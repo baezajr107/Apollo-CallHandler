@@ -1,4 +1,4 @@
-package com.Apollo.Data;
+package com.Apollo.CallHandler.Data;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;

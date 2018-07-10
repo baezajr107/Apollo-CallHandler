@@ -1,4 +1,4 @@
-package com.Apollo.WorkerThreads;
+package com.Apollo.CallHandler.WorkerThreads;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;
@@ -7,14 +7,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.Apollo.CallHandler.MainThread;
+import com.Apollo.CallHandler.Data.Candle;
+import com.Apollo.CallHandler.Data.TradedCoin;
 import com.github.ccob.bittrex4j.BittrexExchange;
 import com.github.ccob.bittrex4j.BittrexExchange.Interval;
 import com.github.ccob.bittrex4j.dao.Fill;
 import com.github.ccob.bittrex4j.dao.Response;
 import com.github.ccob.bittrex4j.dao.Tick;
-import com.Apollo.MainThread;
-import com.Apollo.Data.Candle;
-import com.Apollo.Data.TradedCoin;
 
 
 public class MarketInfoUpdaterThread implements Runnable{
