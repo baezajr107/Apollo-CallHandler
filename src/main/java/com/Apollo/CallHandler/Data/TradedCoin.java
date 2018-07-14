@@ -12,6 +12,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
+import com.Apollo.CallHandler.Utils.TechnicalAnalysis;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.github.ccob.bittrex4j.dao.Fill;
 import com.github.ccob.bittrex4j.dao.Tick;
@@ -69,7 +70,17 @@ public class TradedCoin {
 				.mapToDouble(Fill::getQuantity)
 				.sum();
 		
-		candles5m.get(candles5m.size()-1).updateValues(min, max, close, volume);
+		//get the last candle and set the final values
+		Candle lastCandle = candles5m.get(candles5m.size()-1);
+		lastCandle.updateValues(min, max, close, volume);
+		
+		//calculate TA indicators for the last candle
+		lastCandle.setSma(TechnicalAnalysis.calculateSMA(candles5m, candles5m.size()-1, 20));
+		double[] bbVals = TechnicalAnalysis.calculateBollingerBands(candles5m, lastCandle.getSma(), candles5m.size()-1, 20);
+		lastCandle.setBbLow(bbVals[0]);
+		lastCandle.setBbHigh(bbVals[1]);
+		lastCandle.setRsi(TechnicalAnalysis.calculateRSI(candles5m, candles5m.size()-1, 20));
+		
 		candles5m.add(new Candle(close));
 		
 	}
