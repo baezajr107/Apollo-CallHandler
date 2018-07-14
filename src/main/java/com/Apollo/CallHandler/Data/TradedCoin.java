@@ -12,6 +12,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import javax.persistence.Transient;
 
+import com.Apollo.CallHandler.Utils.TechnicalAnalysis;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.github.ccob.bittrex4j.dao.Fill;
 import com.github.ccob.bittrex4j.dao.Tick;
@@ -51,76 +52,69 @@ public class TradedCoin {
 	//the following 3 methods shift the candles back to create a new candle for a period
 	public void shift5m() {
 		System.out.println("Shifting 5 minute candles back for coin: " + coinName);
+
 		ZonedDateTime nowMinus5 = ZonedDateTime.now().minusMinutes(5);
-		List<Fill> fillsLast5m = fills.stream()
-		.filter(fill -> fill.getTimeStamp().isAfter(nowMinus5))
-		.collect(Collectors.toList());
+		setFinalValues(candles5m,nowMinus5);
 		
-		double min = fillsLast5m.stream()
-				.mapToDouble(Fill::getPrice)
-				.min()
-				.getAsDouble();
-		double max = fillsLast5m.stream()
-				.mapToDouble(Fill::getPrice)
-				.max()
-				.getAsDouble();
-		double close = fillsLast5m.get(fillsLast5m.size()-1).getPrice();
-		double volume = fillsLast5m.stream()
-				.mapToDouble(Fill::getQuantity)
-				.sum();
-		
-		candles5m.get(candles5m.size()-1).updateValues(min, max, close, volume);
-		candles5m.add(new Candle(close));
+		candles5m.add(new Candle(candles5m.get(candles5m.size()-1).getClose()));
 		
 	}
 	
 	public void shift30m() {
 		System.out.println("Shifting 30 minute candles back for coin: " + coinName);
+		
 		ZonedDateTime nowMinus30 = ZonedDateTime.now().minusMinutes(30);
-		List<Fill> fillsLast30m = fills.stream()
-		.filter(fill -> fill.getTimeStamp().isAfter(nowMinus30))
-		.collect(Collectors.toList());
+		setFinalValues(candles30m,nowMinus30);
 		
-		double min = fillsLast30m.stream()
-				.mapToDouble(Fill::getPrice)
-				.min()
-				.getAsDouble();
-		double max = fillsLast30m.stream()
-				.mapToDouble(Fill::getPrice)
-				.max()
-				.getAsDouble();
-		double close = fillsLast30m.get(fillsLast30m.size()-1).getPrice();
-		double volume = fillsLast30m.stream()
-				.mapToDouble(Fill::getQuantity)
-				.sum();
-		
-		candles30m.get(candles30m.size()-1).updateValues(min, max, close, volume);
-		candles30m.add(new Candle(close));
+		candles30m.add(new Candle(candles30m.get(candles30m.size()-1).getClose()));
 	}
 	
 	public void shift1h() {
 		System.out.println("Shifting 1 hour candles back for coin: " + coinName);
+		
 		ZonedDateTime nowMinus1h = ZonedDateTime.now().minusHours(1);
-		List<Fill> fillsLast1h = fills.stream()
-		.filter(fill -> fill.getTimeStamp().isAfter(nowMinus1h))
-		.collect(Collectors.toList());
+		setFinalValues(candles1h,nowMinus1h);
 		
-		double min = fillsLast1h.stream()
-				.mapToDouble(Fill::getPrice)
-				.min()
-				.getAsDouble();
-		double max = fillsLast1h.stream()
-				.mapToDouble(Fill::getPrice)
-				.max()
-				.getAsDouble();
-		double close = fillsLast1h.get(fillsLast1h.size()-1).getPrice();
-		double volume = fillsLast1h.stream()
-				.mapToDouble(Fill::getQuantity)
-				.sum();
-		
-		candles1h.get(candles1h.size()-1).updateValues(min, max, close, volume);
-		candles1h.add(new Candle(close));
+		candles1h.add(new Candle(candles1h.get(candles1h.size()-1).getClose()));
 		fills.clear();
+
+	}
+	
+	private void setFinalValues(List<Candle> candles,ZonedDateTime lowerBound) {
+		//get the last candle and set the final values
+		Candle lastCandle = candles.get(candles.size()-1);
+		
+		if(fills.size()>0) {
+			List<Fill> fillsSinceTimeframeStart = fills.stream()
+			.filter(fill -> fill.getTimeStamp().isAfter(lowerBound))
+			.collect(Collectors.toList());
+			
+			double min = fillsSinceTimeframeStart.stream()
+					.mapToDouble(Fill::getPrice)
+					.min()
+					.getAsDouble();
+			double max = fillsSinceTimeframeStart.stream()
+					.mapToDouble(Fill::getPrice)
+					.max()
+					.getAsDouble();
+			double close = fillsSinceTimeframeStart.get(fillsSinceTimeframeStart.size()-1).getPrice();
+			double volume = fillsSinceTimeframeStart.stream()
+					.mapToDouble(Fill::getQuantity)
+					.sum();
+			lastCandle.updateValues(min, max, close, volume);
+		}
+		
+		//calculate TA indicators for the last candle
+		lastCandle.setSma(TechnicalAnalysis.calculateSMA(candles, candles.size()-1, 20));
+		double[] bbVals = TechnicalAnalysis.calculateBollingerBands(candles, lastCandle.getSma(), candles.size()-1, 20);
+		lastCandle.setBbLow(bbVals[0]);
+		lastCandle.setBbHigh(bbVals[1]);
+		lastCandle.setRsi(TechnicalAnalysis.calculateRSI(candles, candles.size()-1, 20));
+		
+		System.out.println("Calculated TA indicators:");
+		System.out.println("SMA: " + lastCandle.getSma());
+		System.out.println("BB low: " + lastCandle.getBbLow() + " BB high: " + lastCandle.getBbHigh());
+		System.out.println("RSI: " + lastCandle.getRsi());
 	}
 
 	public String getCoinName() {
