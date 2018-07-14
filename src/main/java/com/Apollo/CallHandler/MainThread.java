@@ -34,24 +34,16 @@ public class MainThread implements CommandLineRunner{
     public static void main( String[] args )  throws InterruptedException {
         SpringApplication.run(MainThread.class, args);
     	
-
-
     }
-    
-
     
     private void startThreads() {
 
     	coinManager.start();
-
     	MarketInfoUpdaterThread marketInfoUpdater = new MarketInfoUpdaterThread();
     	marketInfoUpdater.start();
     	//spread out the startup of each pair so the api doesnt get hit by ~50 requests instantly
-
     	
     }
-
-
 
 	@Override
 	public void run(String... arg0) throws Exception {
