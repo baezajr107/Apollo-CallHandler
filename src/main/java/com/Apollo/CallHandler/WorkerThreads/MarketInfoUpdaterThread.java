@@ -16,6 +16,10 @@ import com.github.ccob.bittrex4j.dao.Fill;
 import com.github.ccob.bittrex4j.dao.Response;
 import com.github.ccob.bittrex4j.dao.Tick;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import org.slf4j.LoggerFactory;
+
 
 public class MarketInfoUpdaterThread implements Runnable{
 	private Thread t;
@@ -30,11 +34,12 @@ public class MarketInfoUpdaterThread implements Runnable{
 
 		try {
 			bittrexExchange = new BittrexExchange();
+		     Logger log_sockets = (Logger) LoggerFactory.getLogger(BittrexExchange.class.getName().concat(".WebSockets"));
+		     log_sockets.setLevel(Level.OFF);
 
             bittrexExchange.onUpdateExchangeState(updateExchangeState -> {
             	TradedCoin coin = MainThread.tradedCoins.get(updateExchangeState.getMarketName());
             	coin.addFills(Arrays.asList(updateExchangeState.getFills()));
-        		System.out.println(updateExchangeState.getFills().length+" fills for coin: " + updateExchangeState.getMarketName());
             });
             
     		while(true) {
