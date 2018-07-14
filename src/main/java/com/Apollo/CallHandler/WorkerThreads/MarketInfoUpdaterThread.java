@@ -1,11 +1,15 @@
 package com.Apollo.CallHandler.WorkerThreads;
 
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import javax.xml.bind.DatatypeConverter;
 
 import com.Apollo.CallHandler.MainThread;
 import com.Apollo.CallHandler.Data.Candle;
@@ -25,9 +29,16 @@ public class MarketInfoUpdaterThread implements Runnable{
 	private Thread t;
 	static BittrexExchange bittrexExchange;
 	
+	MessageDigest md;
+	//md5 hash of empty string to start with
+	private String coinNameHash = "D41D8CD98F00B204E9800998ECF8427E";
+	
 	   
 	public MarketInfoUpdaterThread() {
-		
+		try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+		}
 	}
 	   
 	public void run() {
@@ -67,8 +78,22 @@ public class MarketInfoUpdaterThread implements Runnable{
 	
 	private void checkCoinStatus() {
 		System.out.println("checking coin status with coin list size: " + MainThread.tradedCoins.size());
+
 		if(MainThread.tradedCoins != null) {
 			boolean connectionNeedsUpdate = false;
+			
+			//take a hash of the coin names and check for changes
+			String coinNames = "";
+			for(String name:MainThread.tradedCoins.keySet()) {
+				coinNames+=name;
+			}
+			md.update(coinNames.getBytes());
+			String newNameHash = DatatypeConverter.printHexBinary(md.digest()).toUpperCase();
+			if(!newNameHash.equals(coinNameHash)) {
+				connectionNeedsUpdate = true;
+				coinNameHash = newNameHash;
+			}
+			
 			for(TradedCoin coin: MainThread.tradedCoins.values()) {
 				if(coin.getCandles5m() == null) {
 					System.out.println("getting 5m candles for coin: " + coin.getCoinName());
@@ -79,7 +104,6 @@ public class MarketInfoUpdaterThread implements Runnable{
 						candles.add(new Candle(ticks[i]));
 					}
 					coin.setCandles5m(candles);
-					connectionNeedsUpdate = true;
 				}
 				if(coin.getCandles30m() == null) {
 					System.out.println("getting 30m candles for coin: " + coin.getCoinName());
@@ -90,7 +114,6 @@ public class MarketInfoUpdaterThread implements Runnable{
 						candles.add(new Candle(ticks[i]));
 					}
 					coin.setCandles30m(candles);
-					connectionNeedsUpdate = true;
 				}
 				if(coin.getCandles1h() == null) {
 					System.out.println("getting 1h candles for coin: " + coin.getCoinName());
@@ -101,11 +124,7 @@ public class MarketInfoUpdaterThread implements Runnable{
 						candles.add(new Candle(ticks[i]));
 					}
 					coin.setCandles1h(candles);
-					connectionNeedsUpdate = true;
 				}
-			}
-			if(connectionNeedsUpdate) {
-				updateExchangeConnection();
 			}
 			ZonedDateTime now = ZonedDateTime.now();
 			if(now.getMinute()%5==0) {
@@ -122,6 +141,9 @@ public class MarketInfoUpdaterThread implements Runnable{
 						}
 					}
 				}
+			}
+			if(connectionNeedsUpdate) {
+				updateExchangeConnection();
 			}
 		}
 
